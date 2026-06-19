@@ -155,8 +155,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <!-- CALENDAR -->
   <div id="sec-calendar" class="active">
     <div class="cal-header">
-      <div class="topbar-row">
-        <div class="menu-btn"><span></span><span></span><span></span></div>
+      <div class="topbar-row" style="justify-content:flex-end">
         <div class="avatar" id="avatarLetter">N</div>
       </div>
       <div class="month-nav">
@@ -203,8 +202,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <!-- UPLOAD -->
   <div id="sec-upload">
     <div class="upload-header">
-      <div class="topbar-row" style="margin-bottom:8px">
-        <div class="menu-btn"><span></span><span></span><span></span></div>
+      <div class="topbar-row" style="margin-bottom:8px;justify-content:flex-end">
         <div class="avatar" id="avatarLetter2">N</div>
       </div>
       <h2>Upload Schedule</h2>
@@ -242,6 +240,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 const SUPABASE_URL='https://izapleohuqtsvbyjsdgn.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6YXBsZW9odXF0c3ZieWpzZGduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4Mjk2NTMsImV4cCI6MjA5NzQwNTY1M30.qhjHhZ8jaWe5eZqIPdmQOH6vQSBiXJykB1QpaiOGZug';
 const APP_PIN='2580';
+const WORKER_URL='https://schedule-proxy.muhammadnima-work.workers.dev';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DNAMES=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -252,11 +251,23 @@ function togglePw(){const i=document.getElementById('pinInput');i.type=i.type===
 
 function checkPin(){
   const pin=document.getElementById('pinInput').value;
+  const username=document.getElementById('userInput').value.trim().toLowerCase();
   const err=document.getElementById('lockErr');
   if(pin===APP_PIN){
     document.getElementById('lockScreen').style.display='none';
     const app=document.getElementById('mainApp');
     app.style.display='flex';app.style.flexDirection='column';app.style.position='fixed';app.style.inset='0';
+
+    // Set default person based on the username typed at login
+    if(username.startsWith('d')){
+      state.person='dorsa';
+    } else {
+      state.person='nima';
+    }
+    document.getElementById('btn-nima').className='pb'+(state.person==='nima'?' nima-a':'');
+    document.getElementById('btn-dorsa').className='pb'+(state.person==='dorsa'?' dorsa-a':'');
+    ['avatarLetter','avatarLetter2'].forEach(id=>document.getElementById(id).textContent=state.person==='nima'?'N':'D');
+
     loadFromDB();renderCalendar();
   } else {
     err.textContent='Wrong password. Try again.';
@@ -311,17 +322,34 @@ async function analyzeImages(){
     const label=person==='nima'?'Nima (Walmart)':'Dorsa (TJX)';
     const store=person==='nima'?'Walmart':'TJX/Marshalls/HomeGoods';
     status.textContent='Analyzing '+label+'...';
-    const parts=state.images[person].map(src=>({type:'image',source:{type:'base64',media_type:src.split(';')[0].split(':')[1],data:src.split(',')[1]}}));
-    parts.push({type:'text',text:`These are work schedule screenshots for ${person==='nima'?'Nima':'Dorsa'} at ${store}. Extract ALL shifts. If same date appears multiple times keep most accurate. Return ONLY valid JSON no markdown:\n{"shifts":[{"date":"YYYY-MM-DD","start":"HH:MM","end":"HH:MM","hours":8,"isOff":false,"note":""}]}\nFor days off: isOff:true, hours:0. Use 24h format.`});
+
+    const parts=state.images[person].map(src=>({
+      inline_data:{mime_type:src.split(';')[0].split(':')[1],data:src.split(',')[1]}
+    }));
+    parts.push({text:`These are work schedule screenshots for ${person==='nima'?'Nima':'Dorsa'} at ${store}. Extract ALL shifts shown across all images. If the same date appears in multiple images, keep the most accurate/recent version (avoid duplicate or conflicting entries for the same date). Return ONLY valid JSON, no markdown, no explanation, no code fences:
+{"shifts":[{"date":"YYYY-MM-DD","start":"HH:MM","end":"HH:MM","hours":8,"isOff":false,"note":""}]}
+For days off set isOff:true and hours:0. Use 24-hour time format. Make sure dates are correct and not duplicated.`});
+
     try{
-      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,messages:[{role:'user',content:parts}]})});
+      const res=await fetch(WORKER_URL,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({contents:[{role:'user',parts}]})
+      });
       const data=await res.json();
-      const raw=data.content.filter(b=>b.type==='text').map(b=>b.text).join('').replace(/```json|```/g,'').trim();
+      let raw=data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      raw=raw.replace(/```json|```/g,'').trim();
       const parsed=JSON.parse(raw);
-      for(const s of parsed.shifts){
+
+      // De-duplicate by date before saving (keep last occurrence)
+      const byDate={};
+      for(const s of parsed.shifts){byDate[s.date]=s;}
+
+      for(const date in byDate){
+        const s=byDate[date];
         await sb.from('shifts').upsert({person,date:s.date,start_time:s.start,end_time:s.end,hours:s.hours||0,is_off:s.isOff||false,note:s.note||''},{onConflict:'person,date'});
       }
-      status.textContent=label+': '+parsed.shifts.length+' entries saved ✓';
+      status.textContent=label+': '+Object.keys(byDate).length+' entries saved ✓';
       state.images[person]=[];
     }catch(err){status.textContent='Error: '+err.message;}
   }

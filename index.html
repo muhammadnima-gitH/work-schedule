@@ -334,11 +334,30 @@ For days off set isOff:true and hours:0. Use 24-hour time format. Make sure date
       const res=await fetch(WORKER_URL,{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({contents:[{role:'user',parts}]})
+        body:JSON.stringify({
+          contents:[{role:'user',parts}],
+          generationConfig:{maxOutputTokens:8192,temperature:0.1}
+        })
       });
       const data=await res.json();
-      let raw=data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+      if(data.error){
+        throw new Error(data.error.message || JSON.stringify(data.error));
+      }
+
+      const candidate=data.candidates?.[0];
+      if(!candidate){
+        throw new Error('No response from AI: '+JSON.stringify(data).slice(0,200));
+      }
+      if(candidate.finishReason==='MAX_TOKENS'){
+        throw new Error('Response too long — try uploading fewer images at once (3-4 max)');
+      }
+
+      let raw=candidate.content?.parts?.[0]?.text || '';
       raw=raw.replace(/```json|```/g,'').trim();
+      if(!raw){
+        throw new Error('Empty response from AI — try again with fewer images');
+      }
       const parsed=JSON.parse(raw);
 
       // De-duplicate by date before saving (keep last occurrence)

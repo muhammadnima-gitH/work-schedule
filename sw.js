@@ -1,4 +1,4 @@
-const CACHE = 'work-schedule-v1';
+const CACHE = 'work-schedule-v2';
 const ASSETS = [
   '/work-schedule/',
   '/work-schedule/index.html',
@@ -18,7 +18,22 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  const url = e.request.url;
+  
+  // Never intercept API calls - let them go directly to network
+  if (url.includes('anthropic.com') || url.includes('supabase.co')) {
+    e.respondWith(fetch(e.request));
+    return;
+  }
+  
+  // For app assets, try network first, fall back to cache
   e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
+    fetch(e.request)
+      .then(res => {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return res;
+      })
+      .catch(() => caches.match(e.request))
   );
 });

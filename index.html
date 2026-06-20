@@ -124,6 +124,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 #sec-calendar{display:none;flex-direction:column;flex:1;overflow:hidden}
 #sec-upload{display:none;flex-direction:column;flex:1;overflow:hidden}
 #sec-calendar.active,#sec-upload.active{display:flex}
+
+/* ══ EDIT MODAL ══ */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:none;align-items:flex-end}
+.modal-overlay.active{display:flex}
+.modal-card{background:#fff;border-radius:24px 24px 0 0;padding:12px 24px max(24px,env(safe-area-inset-bottom));width:100%;max-height:85vh;overflow-y:auto}
+.modal-handle{width:36px;height:4px;background:#eee;border-radius:2px;margin:0 auto 16px}
+.modal-title{font-size:18px;font-weight:800;color:#1a1a1a;margin-bottom:16px}
+.modal-person-row{display:flex;gap:8px;margin-bottom:16px}
+.modal-person-row .pb{padding:10px}
+.modal-btn-row{display:flex;gap:10px;margin-bottom:10px}
+.modal-save-btn{flex:1;padding:14px;border-radius:14px;border:none;background:#1E2D5A;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+.modal-delete-btn{padding:14px 20px;border-radius:14px;border:1.5px solid #f3c5c5;background:#fff5f5;color:#d24545;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+.modal-cancel-btn{width:100%;padding:12px;border-radius:14px;border:none;background:transparent;color:#aaa;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
 </style>
 </head>
 <body>
@@ -172,7 +185,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <div class="cal-grid-dark" id="calGrid"></div>
     </div>
-    <div class="bottom-card">
+    <div class="bottom-card" style="position:relative">
+      <button onclick="openEditModalBlank()" style="position:absolute;top:-24px;right:20px;width:48px;height:48px;border-radius:50%;border:none;background:#E8855A;color:#fff;font-size:24px;font-weight:700;cursor:pointer;box-shadow:0 6px 16px rgba(232,133,90,0.4);z-index:5;display:flex;align-items:center;justify-content:center">+</button>
       <div class="card-handle"></div>
       <div class="card-scroll">
         <div class="stats">
@@ -186,7 +200,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <div class="li"><div class="ld" style="background:#E8855A"></div>Dorsa (TJX)</div>
           <div class="li"><div class="ld" style="background:#5EBF8A"></div>Day off</div>
         </div>
-        <div class="card-title" id="cardTitle">Shifts this month</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="card-title" id="cardTitle" style="margin-bottom:0">Shifts this month</div>
+          <button id="editDayBtn" onclick="openEditModal()" style="display:none;width:30px;height:30px;border-radius:50%;border:none;background:#1E2D5A;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1">+</button>
+        </div>
         <div class="shift-items" id="shiftList"></div>
         <div style="height:20px"></div>
       </div>
@@ -237,6 +254,38 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
   </div>
 
+  <!-- EDIT SHIFT MODAL -->
+  <div id="editModal" class="modal-overlay" onclick="if(event.target===this)closeEditModal()">
+    <div class="modal-card">
+      <div class="modal-handle"></div>
+      <div class="modal-title" id="modalTitle">Edit Shift</div>
+      <div class="modal-person-row">
+        <button class="pb nima-a" id="modal-btn-nima" onclick="modalSelectPerson('nima')">Nima</button>
+        <button class="pb" id="modal-btn-dorsa" onclick="modalSelectPerson('dorsa')">Dorsa</button>
+      </div>
+      <label class="field-label">Date</label>
+      <input type="date" id="modalDate" class="field-input" style="margin-bottom:14px" onchange="modalSelectPerson(state.modalPerson||state.person)">
+
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <input type="checkbox" id="modalIsOff" onchange="toggleModalOff()" style="width:18px;height:18px">
+        <label for="modalIsOff" style="font-size:13px;color:#555;font-weight:500">Mark as day off</label>
+      </div>
+
+      <div id="modalTimeFields">
+        <label class="field-label">Start time</label>
+        <input type="time" id="modalStart" class="field-input" style="margin-bottom:14px">
+        <label class="field-label">End time</label>
+        <input type="time" id="modalEnd" class="field-input" style="margin-bottom:14px">
+      </div>
+
+      <div class="modal-btn-row">
+        <button class="modal-save-btn" onclick="saveShiftEdit()">Save</button>
+        <button class="modal-delete-btn" id="modalDeleteBtn" onclick="deleteShiftEdit()" style="display:none">Delete</button>
+      </div>
+      <button class="modal-cancel-btn" onclick="closeEditModal()">Cancel</button>
+    </div>
+  </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -250,7 +299,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DNAMES=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-let state={person:'nima',month:new Date().getMonth(),year:new Date().getFullYear(),selectedDate:null,schedules:{nima:{},dorsa:{}},images:{nima:[],dorsa:[]}};
+let state={person:'nima',modalPerson:'nima',month:new Date().getMonth(),year:new Date().getFullYear(),selectedDate:null,schedules:{nima:{},dorsa:{}},images:{nima:[],dorsa:[]}};
 
 function togglePw(){const i=document.getElementById('pinInput');i.type=i.type==='password'?'text':'password';}
 
@@ -273,7 +322,7 @@ function checkPin(){
     document.getElementById('btn-dorsa').className='pb'+(state.person==='dorsa'?' dorsa-a':'');
     ['avatarLetter','avatarLetter2'].forEach(id=>document.getElementById(id).textContent=state.person==='nima'?'N':'D');
 
-    loadFromDB();renderCalendar();
+    loadFromDB();
   } else {
     err.textContent='Wrong password. Try again.';
     setTimeout(()=>err.textContent='',2500);
@@ -331,9 +380,11 @@ async function analyzeImages(){
     const parts=state.images[person].map(src=>({
       inline_data:{mime_type:src.split(';')[0].split(':')[1],data:src.split(',')[1]}
     }));
-    parts.push({text:`These are work schedule screenshots for ${person==='nima'?'Nima':'Dorsa'} at ${store}. Extract ALL shifts shown across all images. If the same date appears in multiple images, keep the most accurate/recent version (avoid duplicate or conflicting entries for the same date). Return ONLY valid JSON, no markdown, no explanation, no code fences:
+    const today=new Date();
+    const currentYear=today.getFullYear();
+    parts.push({text:`These are work schedule screenshots for ${person==='nima'?'Nima':'Dorsa'} at ${store}. Extract ALL shifts shown across all images. The current real-world year is ${currentYear} — these screenshots show schedules from ${currentYear} (or ${currentYear+1} if a date range crosses into next year), NOT any earlier year. Look carefully at any year, month, or week-range labels visible in the images to determine the correct year. If the same date appears in multiple images, keep the most accurate/recent version (avoid duplicate or conflicting entries for the same date). Return ONLY valid JSON, no markdown, no explanation, no code fences:
 {"shifts":[{"date":"YYYY-MM-DD","start":"HH:MM","end":"HH:MM","hours":8,"isOff":false,"note":""}]}
-For days off set isOff:true and hours:0. Use 24-hour time format. Make sure dates are correct and not duplicated.`});
+For days off set isOff:true and hours:0. Use 24-hour time format. Double-check the year in every date is ${currentYear} unless the screenshot clearly shows a different year.`});
 
     try{
       const res=await fetch(WORKER_URL,{
@@ -391,10 +442,117 @@ For days off set isOff:true and hours:0. Use 24-hour time format. Make sure date
 }
 
 async function loadFromDB(){
-  const{data}=await sb.from('shifts').select('*');
-  state.schedules={nima:{},dorsa:{}};
-  if(data)data.forEach(r=>{if(!state.schedules[r.person])state.schedules[r.person]={};state.schedules[r.person][r.date]={start:r.start_time,end:r.end_time,hours:r.hours,isOff:r.is_off,note:r.note};});
-  renderCalendar();
+  try{
+    const{data,error}=await sb.from('shifts').select('*');
+    if(error){
+      console.error('Supabase load error:',error);
+      return;
+    }
+    state.schedules={nima:{},dorsa:{}};
+    if(data)data.forEach(r=>{if(!state.schedules[r.person])state.schedules[r.person]={};state.schedules[r.person][r.date]={start:r.start_time,end:r.end_time,hours:r.hours,isOff:r.is_off,note:r.note,id:r.id};});
+    renderCalendar();
+  }catch(e){
+    console.error('loadFromDB exception:',e);
+  }
+}
+
+function openEditModalBlank(){
+  const today=new Date();
+  const defaultDate=state.selectedDate || (today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0'));
+  const modal=document.getElementById('editModal');
+  modal.classList.add('active');
+  document.getElementById('modalDate').value=defaultDate;
+  modalSelectPerson(state.person);
+}
+
+function openEditModal(){
+  if(!state.selectedDate)return;
+  const modal=document.getElementById('editModal');
+  modal.classList.add('active');
+  document.getElementById('modalDate').value=state.selectedDate;
+
+  const p=state.person;
+  modalSelectPerson(p);
+
+  const existing=state.schedules[p]?.[state.selectedDate];
+  if(existing){
+    document.getElementById('modalIsOff').checked=!!existing.isOff;
+    document.getElementById('modalStart').value=existing.start||'';
+    document.getElementById('modalEnd').value=existing.end||'';
+    document.getElementById('modalDeleteBtn').style.display='block';
+  } else {
+    document.getElementById('modalIsOff').checked=false;
+    document.getElementById('modalStart').value='';
+    document.getElementById('modalEnd').value='';
+    document.getElementById('modalDeleteBtn').style.display='none';
+  }
+  toggleModalOff();
+}
+
+function closeEditModal(){
+  document.getElementById('editModal').classList.remove('active');
+}
+
+function modalSelectPerson(p){
+  state.modalPerson=p;
+  document.getElementById('modal-btn-nima').className='pb'+(p==='nima'?' nima-a':'');
+  document.getElementById('modal-btn-dorsa').className='pb'+(p==='dorsa'?' dorsa-a':'');
+  const existing=state.schedules[p]?.[document.getElementById('modalDate').value];
+  document.getElementById('modalIsOff').checked=!!existing?.isOff;
+  document.getElementById('modalStart').value=existing?.start||'';
+  document.getElementById('modalEnd').value=existing?.end||'';
+  document.getElementById('modalDeleteBtn').style.display=existing?'block':'none';
+  toggleModalOff();
+}
+
+function toggleModalOff(){
+  const isOff=document.getElementById('modalIsOff').checked;
+  document.getElementById('modalTimeFields').style.display=isOff?'none':'block';
+}
+
+async function saveShiftEdit(){
+  const person=state.modalPerson||state.person;
+  const date=document.getElementById('modalDate').value;
+  const isOff=document.getElementById('modalIsOff').checked;
+  const start=document.getElementById('modalStart').value;
+  const end=document.getElementById('modalEnd').value;
+
+  if(!date){alert('Please pick a date.');return;}
+  if(!isOff&&(!start||!end)){alert('Please enter start and end time, or mark as day off.');return;}
+
+  let hours=0;
+  if(!isOff&&start&&end){
+    const [sh,sm]=start.split(':').map(Number);
+    const [eh,em]=end.split(':').map(Number);
+    let diff=(eh*60+em)-(sh*60+sm);
+    if(diff<0)diff+=24*60;
+    hours=Math.round((diff/60)*100)/100;
+  }
+
+  try{
+    const{error}=await sb.from('shifts').upsert({
+      person,date,
+      start_time:isOff?null:start,
+      end_time:isOff?null:end,
+      hours:isOff?0:hours,
+      is_off:isOff,
+      note:''
+    },{onConflict:'person,date'});
+    if(error){alert('Error saving: '+error.message);return;}
+    closeEditModal();
+    await loadFromDB();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function deleteShiftEdit(){
+  const person=state.modalPerson||state.person;
+  const date=document.getElementById('modalDate').value;
+  try{
+    const{error}=await sb.from('shifts').delete().eq('person',person).eq('date',date);
+    if(error){alert('Error deleting: '+error.message);return;}
+    closeEditModal();
+    await loadFromDB();
+  }catch(e){alert('Error: '+e.message);}
 }
 
 function changeMonth(d){
@@ -445,6 +603,9 @@ function renderShiftList(m,y,days){
   const today=new Date();
 
   if(state.selectedDate){
+    document.getElementById('editDayBtn').style.display='flex';
+    document.getElementById('editDayBtn').style.alignItems='center';
+    document.getElementById('editDayBtn').style.justifyContent='center';
     const [sy,sm,sd]=state.selectedDate.split('-').map(Number);
     const lbl=DNAMES[new Date(sy,sm-1,sd).getDay()]+', '+MONTHS[sm-1].slice(0,3)+' '+sd;
     document.getElementById('cardTitle').textContent=lbl;
@@ -459,6 +620,7 @@ function renderShiftList(m,y,days){
     return;
   }
 
+  document.getElementById('editDayBtn').style.display='none';
   const isThisMonth=today.getFullYear()===y&&today.getMonth()===m;
   if(isThisMonth){
     document.getElementById('cardTitle').textContent='This month — tap a day for details';

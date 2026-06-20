@@ -188,7 +188,7 @@ body{position:fixed;inset:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe 
     <div class="blob-yellow2"></div>
   </div>
   <div class="icon-card"><img src="icon-192.png" alt="App icon" style="width:100%;height:100%;border-radius:20px;object-fit:contain"></div>
-  <div class="form-area">
+  <div class="form-area scrollable-area">
     <div class="app-title">Work Schedule</div>
     <div class="field-group">
       <label class="field-label">Username</label>
@@ -228,7 +228,7 @@ body{position:fixed;inset:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe 
     <button onclick="openEditModalBlank()" class="fab-add-btn">+</button>
     <div class="bottom-card">
       <div class="card-handle"></div>
-      <div class="card-scroll">
+      <div class="card-scroll scrollable-area">
         <div class="stats">
           <div class="stat"><div class="stat-l">Nima shifts</div><div class="stat-v nv" id="nimaS">–</div></div>
           <div class="stat"><div class="stat-l">Nima hours</div><div class="stat-v nv" id="nimaH">–</div></div>
@@ -268,7 +268,7 @@ body{position:fixed;inset:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe 
       <p>Add screenshots to analyze</p>
     </div>
     <div class="upload-card" style="display:flex;flex-direction:column">
-      <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain">
+      <div class="scrollable-area" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain">
         <div class="person-row">
           <button class="pb nima-a" id="btn-nima" onclick="selectPerson('nima')">Nima (Walmart)</button>
           <button class="pb" id="btn-dorsa" onclick="selectPerson('dorsa')">Dorsa (TJX)</button>
@@ -296,7 +296,7 @@ body{position:fixed;inset:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe 
 
   <!-- EDIT SHIFT MODAL -->
   <div id="editModal" class="modal-overlay" onclick="if(event.target===this)closeEditModal()">
-    <div class="modal-card">
+    <div class="modal-card scrollable-area">
       <div class="modal-handle"></div>
       <div class="modal-title" id="modalTitle">Edit Shift</div>
       <div class="modal-person-row">
@@ -354,6 +354,15 @@ function checkStandaloneMode(){
   }
 }
 checkStandaloneMode();
+
+// Prevent iOS Safari rubber-band bounce on the outer document.
+// Only allow native scrolling inside elements explicitly marked as scrollable.
+document.addEventListener('touchmove', function(e){
+  const scrollable = e.target.closest('.scrollable-area');
+  if(!scrollable){
+    e.preventDefault();
+  }
+}, { passive: false });
 
 function positionLockIcon(){
   const blob=document.querySelector('.blob-area');

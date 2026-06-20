@@ -15,6 +15,12 @@
 html,body{height:100%;height:100dvh;overflow:hidden;touch-action:manipulation}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff}
 
+@media (display-mode: standalone){
+  html,body{height:100vh;height:100dvh}
+  #mainApp{padding-bottom:env(safe-area-inset-bottom)}
+  .bottom-nav{padding-bottom:8px !important}
+}
+
 /* ══ LOCK ══ */
 #lockScreen{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;background:#fff;overflow:hidden}
 .blob-area{position:relative;height:38vh;min-height:180px;max-height:280px;background:#F5C842;overflow:hidden;flex-shrink:0}
@@ -71,6 +77,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .shift-items{display:flex;flex-direction:column;gap:0}
 .si{display:flex;align-items:center;gap:12px;padding:12px 0}
 .si+.si{border-top:1px solid #f5f5f5}
+
+/* ══ DAY BLOCK FEED ══ */
+.day-block{padding:16px 0;border-radius:10px;transition:background .2s}
+.day-block-active{background:#f7f5ff;margin:0 -10px;padding:16px 10px}
+.day-sep{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;margin-bottom:6px;border-bottom:2px solid #1a1a1a}
+.day-sep-label{font-size:14px;font-weight:800;color:#1a1a1a}
+.day-sep-edit{width:26px;height:26px;border-radius:50%;border:none;background:#f0f0f0;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
 .si-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px}
 .ni-bg{background:#EEF2FF}
 .di-bg{background:#FFF0E6}
@@ -121,9 +134,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .status-msg{text-align:center;font-size:12px;color:#aaa;min-height:18px;padding-bottom:20px}
 
 /* sections */
-#sec-calendar{display:none;flex-direction:column;flex:1;overflow:hidden}
+#sec-calendar{display:none;flex-direction:column;flex:1;overflow:hidden;position:relative}
 #sec-upload{display:none;flex-direction:column;flex:1;overflow:hidden}
 #sec-calendar.active,#sec-upload.active{display:flex}
+
+.fab-add-btn{position:absolute;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;border-radius:50%;border:3px solid #fff;background:#E8855A;color:#fff;font-size:24px;font-weight:700;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,0.25);z-index:20;display:flex;align-items:center;justify-content:center;padding:0}
 
 /* ══ EDIT MODAL ══ */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:none;align-items:flex-end}
@@ -152,7 +167,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="app-title">Work Schedule</div>
     <div class="field-group">
       <label class="field-label">Username</label>
-      <input class="field-input" id="userInput" type="text" placeholder="Nima or Dorsa" autocomplete="off" autocorrect="off" autocapitalize="off">
+      <input class="field-input" id="userInput" type="text" placeholder="Username" autocomplete="off" autocorrect="off" autocapitalize="off">
     </div>
     <label class="field-label" style="width:100%;margin-bottom:6px">Password</label>
     <div class="pw-wrap">
@@ -168,7 +183,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div id="mainApp">
 
   <!-- CALENDAR -->
-  <div id="sec-calendar" class="active">
+  <div id="sec-calendar" class="active" style="position:relative">
     <div class="cal-header">
       <div class="topbar-row" style="justify-content:flex-end">
         <div class="avatar" id="avatarLetter">N</div>
@@ -185,8 +200,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <div class="cal-grid-dark" id="calGrid"></div>
     </div>
-    <div class="bottom-card" style="position:relative">
-      <button onclick="openEditModalBlank()" style="position:absolute;top:-24px;right:20px;width:48px;height:48px;border-radius:50%;border:none;background:#E8855A;color:#fff;font-size:24px;font-weight:700;cursor:pointer;box-shadow:0 6px 16px rgba(232,133,90,0.4);z-index:5;display:flex;align-items:center;justify-content:center">+</button>
+    <button onclick="openEditModalBlank()" class="fab-add-btn">+</button>
+    <div class="bottom-card">
       <div class="card-handle"></div>
       <div class="card-scroll">
         <div class="stats">
@@ -202,7 +217,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
           <div class="card-title" id="cardTitle" style="margin-bottom:0">Shifts this month</div>
-          <button id="editDayBtn" onclick="openEditModal()" style="display:none;width:30px;height:30px;border-radius:50%;border:none;background:#1E2D5A;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1">+</button>
+          <button id="editDayBtn" onclick="openEditModal()" style="display:none;width:32px;height:32px;border-radius:50%;border:none;background:#1E2D5A;color:#fff;font-size:14px;cursor:pointer;line-height:1">✏️</button>
         </div>
         <div class="shift-items" id="shiftList"></div>
         <div style="height:20px"></div>
@@ -555,6 +570,15 @@ async function deleteShiftEdit(){
   }catch(e){alert('Error: '+e.message);}
 }
 
+function positionFab(){
+  const header=document.querySelector('#sec-calendar .cal-header');
+  const fab=document.querySelector('.fab-add-btn');
+  if(header&&fab){
+    fab.style.top=header.offsetHeight+'px';
+  }
+}
+window.addEventListener('resize',positionFab);
+
 function changeMonth(d){
   state.month+=d;
   if(state.month>11){state.month=0;state.year++;}
@@ -576,11 +600,22 @@ function renderCalendar(){
   for(let i=0;i<first;i++){const c=document.createElement('div');c.className='dc other';const n=document.createElement('div');n.className='dn';n.textContent=prev-first+1+i;c.appendChild(n);grid.appendChild(c);}
 
   for(let d=1;d<=days;d++){
-    const c=document.createElement('div');c.className='dc';c.style.cursor='pointer';
+    const c=document.createElement('div');c.className='dc';c.style.cursor='pointer';c.dataset.date='';
     const ds=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    c.dataset.date=ds;
     if(today.getFullYear()===y&&today.getMonth()===m&&today.getDate()===d)c.classList.add('today');
     if(state.selectedDate===ds)c.classList.add('selected-day');
-    c.onclick=()=>{state.selectedDate=(state.selectedDate===ds)?null:ds;renderCalendar();};
+    c.onclick=()=>{
+      state.selectedDate=ds;
+      document.querySelectorAll('#calGrid .dc').forEach(cell=>cell.classList.remove('selected-day'));
+      c.classList.add('selected-day');
+      document.querySelectorAll('.day-block').forEach(b=>b.classList.remove('day-block-active'));
+      const target=document.getElementById('day-'+ds);
+      if(target){
+        target.classList.add('day-block-active');
+        target.scrollIntoView({behavior:'smooth',block:'start'});
+      }
+    };
     const n=document.createElement('div');n.className='dn';n.textContent=d;c.appendChild(n);
     const nd=state.schedules.nima?.[ds];
     const dd=state.schedules.dorsa?.[ds];
@@ -596,53 +631,73 @@ function renderCalendar(){
   document.getElementById('dorsaS').textContent=dorsaS||'–';
   document.getElementById('dorsaH').textContent=dorsaH?(Math.round(dorsaH*10)/10)+'h':'–';
   renderShiftList(m,y,days);
+  setTimeout(positionFab,0);
 }
 
 function renderShiftList(m,y,days){
   const list=document.getElementById('shiftList');
   const today=new Date();
 
-  if(state.selectedDate){
-    document.getElementById('editDayBtn').style.display='flex';
-    document.getElementById('editDayBtn').style.alignItems='center';
-    document.getElementById('editDayBtn').style.justifyContent='center';
-    const [sy,sm,sd]=state.selectedDate.split('-').map(Number);
-    const lbl=DNAMES[new Date(sy,sm-1,sd).getDay()]+', '+MONTHS[sm-1].slice(0,3)+' '+sd;
-    document.getElementById('cardTitle').textContent=lbl;
-    const nd=state.schedules.nima?.[state.selectedDate];
-    const dd=state.schedules.dorsa?.[state.selectedDate];
-    list.innerHTML='';
-    if(!nd&&!dd){list.innerHTML='<div style="text-align:center;padding:30px 0;color:#ccc;font-size:14px">No shifts on this day.</div>';return;}
-    if(nd&&!nd.isOff){const e=document.createElement('div');e.className='si';e.innerHTML=`<div class="si-icon ni-bg">🏪</div><div class="si-info"><div class="si-name">Nima — Walmart</div><div class="si-time">${nd.start}–${nd.end}</div></div><div class="si-badge badge-nima">${nd.hours}h</div>`;list.appendChild(e);}
-    if(dd&&!dd.isOff){const e=document.createElement('div');e.className='si';e.innerHTML=`<div class="si-icon di-bg">🛍️</div><div class="si-info"><div class="si-name">Dorsa — TJX</div><div class="si-time">${dd.start}–${dd.end}</div></div><div class="si-badge badge-dorsa">${dd.hours}h</div>`;list.appendChild(e);}
-    if(nd&&nd.isOff){const e=document.createElement('div');e.className='si';e.innerHTML=`<div class="si-icon oi-bg">🌿</div><div class="si-info"><div class="si-name">Nima — Day off</div></div><div class="si-badge badge-off">Off</div>`;list.appendChild(e);}
-    if(dd&&dd.isOff){const e=document.createElement('div');e.className='si';e.innerHTML=`<div class="si-icon oi-bg">🌿</div><div class="si-info"><div class="si-name">Dorsa — Day off</div></div><div class="si-badge badge-off">Off</div>`;list.appendChild(e);}
-    return;
-  }
+  document.getElementById('cardTitle').textContent=MONTHS[m]+' '+y;
 
-  document.getElementById('editDayBtn').style.display='none';
-  const isThisMonth=today.getFullYear()===y&&today.getMonth()===m;
-  if(isThisMonth){
-    document.getElementById('cardTitle').textContent='This month — tap a day for details';
-  } else {
-    document.getElementById('cardTitle').textContent=MONTHS[m]+' — tap a day for details';
-  }
-  const items=[];
+  list.innerHTML='';
   for(let d=1;d<=days;d++){
     const ds=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const isToday=today.getFullYear()===y&&today.getMonth()===m&&today.getDate()===d;
     const lbl=DNAMES[new Date(y,m,d).getDay()]+', '+MONTHS[m].slice(0,3)+' '+d;
     const nd=state.schedules.nima?.[ds];
     const dd=state.schedules.dorsa?.[ds];
-    if(nd||dd)items.push({lbl,nd,dd});
+
+    const dayBlock=document.createElement('div');
+    dayBlock.className='day-block';
+    dayBlock.id='day-'+ds;
+    if(state.selectedDate===ds)dayBlock.classList.add('day-block-active');
+
+    const header=document.createElement('div');
+    header.className='day-sep';
+    header.innerHTML=`<span class="day-sep-label">${lbl}${isToday?' · Today':''}</span><button class="day-sep-edit" onclick="event.stopPropagation();selectDayAndEdit('${ds}')">✏️</button>`;
+    dayBlock.appendChild(header);
+
+    let hasContent=false;
+    if(nd&&!nd.isOff){hasContent=true;const e=document.createElement('div');e.className='si';e.innerHTML=`<div class="si-icon ni-bg">🏪</div><div class="si-info"><div class="si-name">Nima — Walmart</div><div class="si-time">${nd.start}–${nd.end}</div></div><div class="si-badge badge-nima">${nd.hours}h</div>`;dayBlock.appendChild(e);}
+    if(dd&&!dd.isOff){hasContent=true;const e=document.createElement('div');e.className='si';e.innerHTML=`<div class="si-icon di-bg">🛍️</div><div class="si-info"><div class="si-name">Dorsa — TJX</div><div class="si-time">${dd.start}–${dd.end}</div></div><div class="si-badge badge-dorsa">${dd.hours}h</div>`;dayBlock.appendChild(e);}
+    if(nd&&nd.isOff){hasContent=true;const e=document.createElement('div');e.className='si';e.innerHTML=`<div class="si-icon oi-bg">🌿</div><div class="si-info"><div class="si-name">Nima — Day off</div></div><div class="si-badge badge-off">Off</div>`;dayBlock.appendChild(e);}
+    if(dd&&dd.isOff){hasContent=true;const e=document.createElement('div');e.className='si';e.innerHTML=`<div class="si-icon oi-bg">🌿</div><div class="si-info"><div class="si-name">Dorsa — Day off</div></div><div class="si-badge badge-off">Off</div>`;dayBlock.appendChild(e);}
+    if(!hasContent){
+      const e=document.createElement('div');
+      e.style.cssText='padding:10px 0;color:#ccc;font-size:12px';
+      e.textContent='No shifts scheduled';
+      dayBlock.appendChild(e);
+    }
+
+    dayBlock.onclick=()=>{
+      state.selectedDate=(state.selectedDate===ds)?null:ds;
+      document.querySelectorAll('.day-block').forEach(b=>b.classList.remove('day-block-active'));
+      document.querySelectorAll('#calGrid .dc').forEach(cell=>cell.classList.remove('selected-day'));
+      if(state.selectedDate===ds){
+        dayBlock.classList.add('day-block-active');
+        const cell=document.querySelector('#calGrid .dc[data-date="'+ds+'"]');
+        if(cell)cell.classList.add('selected-day');
+      }
+    };
+
+    list.appendChild(dayBlock);
   }
-  if(!items.length){list.innerHTML='<div style="text-align:center;padding:30px 0;color:#ccc;font-size:14px">No shifts this month.<br>Upload screenshots to get started.</div>';return;}
-  list.innerHTML='';
-  items.forEach(it=>{
-    if(it.nd&&!it.nd.isOff){const e=document.createElement('div');e.className='si';e.innerHTML=`<div class="si-icon ni-bg">🏪</div><div class="si-info"><div class="si-name">Nima — Walmart</div><div class="si-time">${it.lbl} &nbsp;·&nbsp; ${it.nd.start}–${it.nd.end}</div></div><div class="si-badge badge-nima">${it.nd.hours}h</div>`;list.appendChild(e);}
-    if(it.dd&&!it.dd.isOff){const e=document.createElement('div');e.className='si';e.innerHTML=`<div class="si-icon di-bg">🛍️</div><div class="si-info"><div class="si-name">Dorsa — TJX</div><div class="si-time">${it.lbl} &nbsp;·&nbsp; ${it.dd.start}–${it.dd.end}</div></div><div class="si-badge badge-dorsa">${it.dd.hours}h</div>`;list.appendChild(e);}
-    if(it.nd&&it.nd.isOff){const e=document.createElement('div');e.className='si';e.innerHTML=`<div class="si-icon oi-bg">🌿</div><div class="si-info"><div class="si-name">Nima — Day off</div><div class="si-time">${it.lbl}</div></div><div class="si-badge badge-off">Off</div>`;list.appendChild(e);}
-    if(it.dd&&it.dd.isOff){const e=document.createElement('div');e.className='si';e.innerHTML=`<div class="si-icon oi-bg">🌿</div><div class="si-info"><div class="si-name">Dorsa — Day off</div><div class="si-time">${it.lbl}</div></div><div class="si-badge badge-off">Off</div>`;list.appendChild(e);}
-  });
+
+  document.getElementById('editDayBtn').style.display='none';
+
+  // If a day is selected (e.g. clicked from calendar grid), scroll it into view
+  if(state.selectedDate){
+    setTimeout(()=>{
+      const target=document.getElementById('day-'+state.selectedDate);
+      if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
+    },50);
+  }
+}
+
+function selectDayAndEdit(ds){
+  state.selectedDate=ds;
+  openEditModal();
 }
 </script>
 </body>

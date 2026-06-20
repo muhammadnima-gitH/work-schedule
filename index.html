@@ -54,6 +54,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dc{min-height:44px;display:flex;flex-direction:column;align-items:center;padding:3px 1px;border-radius:8px}
 .dc.other .dn{color:rgba(255,255,255,0.2)}
 .dc.today .dn{background:#E8855A;color:#fff;border-radius:50%}
+.dc.selected-day{background:rgba(255,255,255,0.12);border-radius:8px}
+.dc.selected-day.today .dn{box-shadow:0 0 0 2px #fff}
 .dn{width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:rgba(255,255,255,0.85);margin-bottom:2px}
 .dots{display:flex;gap:2px;justify-content:center}
 .dot{width:5px;height:5px;border-radius:50%}
@@ -200,7 +202,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 
   <!-- UPLOAD -->
-  <div id="sec-upload">
+  <div id="sec-upload" style="display:none;flex-direction:column">
     <div class="upload-header">
       <div class="topbar-row" style="margin-bottom:8px;justify-content:flex-end">
         <div class="avatar" id="avatarLetter2">N</div>
@@ -208,29 +210,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <h2>Upload Schedule</h2>
       <p>Add screenshots to analyze</p>
     </div>
-    <div class="upload-card">
-      <div class="person-row">
-        <button class="pb nima-a" id="btn-nima" onclick="selectPerson('nima')">Nima (Walmart)</button>
-        <button class="pb" id="btn-dorsa" onclick="selectPerson('dorsa')">Dorsa (TJX)</button>
+    <div class="upload-card" style="display:flex;flex-direction:column">
+      <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch">
+        <div class="person-row">
+          <button class="pb nima-a" id="btn-nima" onclick="selectPerson('nima')">Nima (Walmart)</button>
+          <button class="pb" id="btn-dorsa" onclick="selectPerson('dorsa')">Dorsa (TJX)</button>
+        </div>
+        <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+          <span class="upload-icon">☁️</span>
+          <p>Tap to upload schedule screenshots</p>
+          <p style="font-size:11px;margin-top:4px;color:#ccc">Multiple images supported</p>
+          <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handleFiles(event)">
+        </div>
+        <div class="prev-grid" id="previewGrid"></div>
+        <button class="analyze-btn" id="analyzeBtn" onclick="analyzeImages()" disabled>🤖 Analyze Schedule</button>
+        <p class="status-msg" id="statusMsg"></p>
       </div>
-      <div class="upload-box" onclick="document.getElementById('fileInput').click()">
-        <span class="upload-icon">☁️</span>
-        <p>Tap to upload schedule screenshots</p>
-        <p style="font-size:11px;margin-top:4px;color:#ccc">Multiple images supported</p>
-        <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handleFiles(event)">
-      </div>
-      <div class="prev-grid" id="previewGrid"></div>
-      <button class="analyze-btn" id="analyzeBtn" onclick="analyzeImages()" disabled>🤖 Analyze Schedule</button>
-      <p class="status-msg" id="statusMsg"></p>
+      <nav class="bottom-nav" style="background:#fff;border-top:1px solid #f0f0f0;margin:0 -20px">
+        <button class="nb" id="nav-calendar2" onclick="showSection('calendar')">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendar
+        </button>
+        <button class="nb active" id="nav-upload2" onclick="showSection('upload')">
+          <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>Upload
+        </button>
+      </nav>
     </div>
-    <nav class="bottom-nav" style="background:#fff;border-top:1px solid #f0f0f0">
-      <button class="nb" id="nav-calendar2" onclick="showSection('calendar')">
-        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendar
-      </button>
-      <button class="nb active" id="nav-upload2" onclick="showSection('upload')">
-        <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>Upload
-      </button>
-    </nav>
   </div>
 
 </div>
@@ -246,7 +250,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DNAMES=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-let state={person:'nima',month:new Date().getMonth(),year:new Date().getFullYear(),schedules:{nima:{},dorsa:{}},images:{nima:[],dorsa:[]}};
+let state={person:'nima',month:new Date().getMonth(),year:new Date().getFullYear(),selectedDate:null,schedules:{nima:{},dorsa:{}},images:{nima:[],dorsa:[]}};
 
 function togglePw(){const i=document.getElementById('pinInput');i.type=i.type==='password'?'text':'password';}
 
@@ -371,6 +375,13 @@ For days off set isOff:true and hours:0. Use 24-hour time format. Make sure date
       }
       status.textContent=label+': '+Object.keys(byDate).length+' entries saved ✓';
       state.images[person]=[];
+
+      // Jump calendar to the month containing the most shifts just saved
+      const dates=Object.keys(byDate).sort();
+      if(dates.length){
+        const [jy,jm]=dates[0].split('-').map(Number);
+        state.month=jm-1;state.year=jy;
+      }
     }catch(err){status.textContent='Error: '+err.message;}
   }
   renderPreviews();
@@ -390,6 +401,7 @@ function changeMonth(d){
   state.month+=d;
   if(state.month>11){state.month=0;state.year++;}
   if(state.month<0){state.month=11;state.year--;}
+  state.selectedDate=null;
   renderCalendar();
 }
 
@@ -406,9 +418,11 @@ function renderCalendar(){
   for(let i=0;i<first;i++){const c=document.createElement('div');c.className='dc other';const n=document.createElement('div');n.className='dn';n.textContent=prev-first+1+i;c.appendChild(n);grid.appendChild(c);}
 
   for(let d=1;d<=days;d++){
-    const c=document.createElement('div');c.className='dc';
+    const c=document.createElement('div');c.className='dc';c.style.cursor='pointer';
     const ds=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     if(today.getFullYear()===y&&today.getMonth()===m&&today.getDate()===d)c.classList.add('today');
+    if(state.selectedDate===ds)c.classList.add('selected-day');
+    c.onclick=()=>{state.selectedDate=(state.selectedDate===ds)?null:ds;renderCalendar();};
     const n=document.createElement('div');n.className='dn';n.textContent=d;c.appendChild(n);
     const nd=state.schedules.nima?.[ds];
     const dd=state.schedules.dorsa?.[ds];
@@ -429,11 +443,27 @@ function renderCalendar(){
 function renderShiftList(m,y,days){
   const list=document.getElementById('shiftList');
   const today=new Date();
+
+  if(state.selectedDate){
+    const [sy,sm,sd]=state.selectedDate.split('-').map(Number);
+    const lbl=DNAMES[new Date(sy,sm-1,sd).getDay()]+', '+MONTHS[sm-1].slice(0,3)+' '+sd;
+    document.getElementById('cardTitle').textContent=lbl;
+    const nd=state.schedules.nima?.[state.selectedDate];
+    const dd=state.schedules.dorsa?.[state.selectedDate];
+    list.innerHTML='';
+    if(!nd&&!dd){list.innerHTML='<div style="text-align:center;padding:30px 0;color:#ccc;font-size:14px">No shifts on this day.</div>';return;}
+    if(nd&&!nd.isOff){const e=document.createElement('div');e.className='si';e.innerHTML=`<div class="si-icon ni-bg">🏪</div><div class="si-info"><div class="si-name">Nima — Walmart</div><div class="si-time">${nd.start}–${nd.end}</div></div><div class="si-badge badge-nima">${nd.hours}h</div>`;list.appendChild(e);}
+    if(dd&&!dd.isOff){const e=document.createElement('div');e.className='si';e.innerHTML=`<div class="si-icon di-bg">🛍️</div><div class="si-info"><div class="si-name">Dorsa — TJX</div><div class="si-time">${dd.start}–${dd.end}</div></div><div class="si-badge badge-dorsa">${dd.hours}h</div>`;list.appendChild(e);}
+    if(nd&&nd.isOff){const e=document.createElement('div');e.className='si';e.innerHTML=`<div class="si-icon oi-bg">🌿</div><div class="si-info"><div class="si-name">Nima — Day off</div></div><div class="si-badge badge-off">Off</div>`;list.appendChild(e);}
+    if(dd&&dd.isOff){const e=document.createElement('div');e.className='si';e.innerHTML=`<div class="si-icon oi-bg">🌿</div><div class="si-info"><div class="si-name">Dorsa — Day off</div></div><div class="si-badge badge-off">Off</div>`;list.appendChild(e);}
+    return;
+  }
+
   const isThisMonth=today.getFullYear()===y&&today.getMonth()===m;
   if(isThisMonth){
-    document.getElementById('cardTitle').textContent='Today — '+DNAMES[today.getDay()]+' '+MONTHS[m].slice(0,3)+' '+today.getDate();
+    document.getElementById('cardTitle').textContent='This month — tap a day for details';
   } else {
-    document.getElementById('cardTitle').textContent='Shifts — '+MONTHS[m];
+    document.getElementById('cardTitle').textContent=MONTHS[m]+' — tap a day for details';
   }
   const items=[];
   for(let d=1;d<=days;d++){

@@ -11,20 +11,22 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Work Schedule App</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html{height:100%}
-body{height:100%;min-height:100dvh;overflow:hidden;touch-action:manipulation}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+html,body{height:100vh;width:100vw;overflow:hidden;touch-action:manipulation;overscroll-behavior:none}
+@supports (height: 100dvh){
+  html,body{height:100dvh}
+}
+body{position:fixed;inset:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#2D1F5E}
 
-#lockScreen,#mainApp{position:fixed;top:0;left:0;right:0;bottom:0}
+#lockScreen,#mainApp{position:absolute;top:0;left:0;right:0;bottom:0}
 
 /* ══ LOCK ══ */
-#lockScreen{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;background:#fff;overflow:hidden}
+#lockScreen{position:absolute;inset:0;z-index:100;display:flex;flex-direction:column;background:#fff;overflow:hidden}
 .blob-area{position:relative;height:38vh;min-height:180px;max-height:280px;background:#F5C842;overflow:hidden;flex-shrink:0}
 .blob-purple{position:absolute;top:-15%;right:-10%;width:55%;padding-top:55%;background:#5B5BD6;border-radius:50%}
 .blob-yellow2{position:absolute;bottom:-30%;left:-8%;width:50%;padding-top:50%;background:#F5C842;border-radius:50%}
 .icon-card{position:absolute;top:38vh;left:50%;transform:translate(-50%,-50%);width:64px;height:64px;background:#fff;border-radius:20px;box-shadow:0 8px 28px rgba(0,0,0,0.13);display:flex;align-items:center;justify-content:center;font-size:32px;z-index:5;padding:10px}
-.form-area{flex:1;background:#fff;padding:52px 32px max(32px,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;overflow-y:auto}
+.form-area{flex:1;background:#fff;padding:52px 32px max(32px,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;overflow-y:auto;overscroll-behavior:contain}
 .app-title{font-size:22px;font-weight:700;color:#1a1a1a;margin-bottom:28px}
 .field-group{width:100%;margin-bottom:14px}
 .field-label{font-size:12px;color:#888;margin-bottom:6px;font-weight:500;display:block}
@@ -39,7 +41,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .lock-err{color:#e24b4a;font-size:13px;margin-top:10px;min-height:18px;text-align:center}
 
 /* ══ MAIN APP ══ */
-#mainApp{display:none;position:fixed;inset:0;flex-direction:column;background:#2D1F5E}
+#mainApp{display:none;position:absolute;inset:0;flex-direction:column;background:#2D1F5E}
 
 /* ══ CAL HEADER (dark) ══ */
 .cal-header{background:#2D1F5E;padding:16px 20px 0;flex-shrink:0;padding-top:max(16px,env(safe-area-inset-top))}
@@ -69,7 +71,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* ══ BOTTOM WHITE CARD ══ */
 .bottom-card{background:#fff;border-radius:28px 28px 0 0;flex:1;display:flex;flex-direction:column;overflow:hidden}
 .card-handle{width:36px;height:4px;background:#eee;border-radius:2px;margin:12px auto 8px}
-.card-scroll{flex:1;overflow-y:auto;padding:0 16px;-webkit-overflow-scrolling:touch}
+.card-scroll{flex:1;overflow-y:auto;padding:0 16px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .card-title{font-size:18px;font-weight:800;color:#1a1a1a;margin-bottom:14px}
 .shift-items{display:flex;flex-direction:column;gap:0}
 .si{display:flex;align-items:center;gap:12px;padding:12px 0}
@@ -140,7 +142,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* ══ EDIT MODAL ══ */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:none;align-items:flex-end}
 .modal-overlay.active{display:flex}
-.modal-card{background:#fff;border-radius:24px 24px 0 0;padding:12px 24px max(24px,env(safe-area-inset-bottom));width:100%;max-height:85vh;overflow-y:auto}
+.modal-card{background:#fff;border-radius:24px 24px 0 0;padding:12px 24px max(24px,env(safe-area-inset-bottom));width:100%;max-height:85vh;overflow-y:auto;overscroll-behavior:contain}
 .modal-handle{width:36px;height:4px;background:#eee;border-radius:2px;margin:0 auto 16px}
 .modal-title{font-size:18px;font-weight:800;color:#1a1a1a;margin-bottom:16px}
 .modal-person-row{display:flex;gap:8px;margin-bottom:16px}
@@ -154,7 +156,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <body>
 
 <!-- INSTALL GUIDE (shown only in Safari browser, not when running as installed app) -->
-<div id="installGuide" style="display:none;position:fixed;inset:0;z-index:300;background:#fff;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center">
+<div id="installGuide" style="display:none;position:absolute;inset:0;z-index:300;background:#fff;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center">
   <div style="width:80px;height:80px;border-radius:22px;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,0.13);margin-bottom:20px">
     <img src="icon-192.png" alt="App icon" style="width:100%;height:100%;object-fit:contain;background:#fff">
   </div>
@@ -180,7 +182,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <!-- LOCK -->
-<div id="lockScreen" style="position:fixed;inset:0;display:flex;flex-direction:column">
+<div id="lockScreen" style="position:absolute;inset:0;display:flex;flex-direction:column">
   <div class="blob-area">
     <div class="blob-purple"></div>
     <div class="blob-yellow2"></div>
@@ -190,7 +192,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="app-title">Work Schedule</div>
     <div class="field-group">
       <label class="field-label">Username</label>
-      <input class="field-input" id="userInput" type="text" placeholder="Username" autocomplete="off" autocorrect="off" autocapitalize="off">
+      <input class="field-input" id="userInput" type="text" placeholder="" autocomplete="off" autocorrect="off" autocapitalize="off">
     </div>
     <label class="field-label" style="width:100%;margin-bottom:6px">Password</label>
     <div class="pw-wrap">
@@ -266,7 +268,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <p>Add screenshots to analyze</p>
     </div>
     <div class="upload-card" style="display:flex;flex-direction:column">
-      <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch">
+      <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain">
         <div class="person-row">
           <button class="pb nima-a" id="btn-nima" onclick="selectPerson('nima')">Nima (Walmart)</button>
           <button class="pb" id="btn-dorsa" onclick="selectPerson('dorsa')">Dorsa (TJX)</button>
@@ -333,12 +335,13 @@ const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 const APP_PIN='2580';
 const WORKER_URL='https://schedule-proxy.muhammadnima-work.workers.dev';
 // NOTE: model used is set server-side in the Cloudflare Worker (worker.js)
-const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DNAMES=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const offIconSvg='<svg viewBox="0 0 24 24" width="18" height="18" stroke="#1A7A48" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>';
 
 let state={person:'nima',modalPerson:'nima',month:new Date().getMonth(),year:new Date().getFullYear(),selectedDate:null,schedules:{nima:{},dorsa:{}},images:{nima:[],dorsa:[]}};
+
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 function checkStandaloneMode(){
   const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
@@ -372,7 +375,7 @@ function checkPin(){
   if(pin===APP_PIN){
     document.getElementById('lockScreen').style.display='none';
     const app=document.getElementById('mainApp');
-    app.style.display='flex';app.style.flexDirection='column';app.style.position='fixed';app.style.inset='0';
+    app.style.display='flex';app.style.flexDirection='column';app.style.position='absolute';app.style.inset='0';
 
     // Set default person based on the username typed at login
     if(username.startsWith('d')){

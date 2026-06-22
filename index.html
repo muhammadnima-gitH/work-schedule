@@ -192,7 +192,7 @@ body{position:fixed;inset:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe 
     <div class="app-title">Work Schedule</div>
     <div class="field-group">
       <label class="field-label">Username</label>
-      <input class="field-input" id="userInput" type="text" placeholder="Username" autocomplete="off" autocorrect="off" autocapitalize="off">
+      <input class="field-input" id="userInput" type="text" placeholder="" autocomplete="off" autocorrect="off" autocapitalize="off">
     </div>
     <label class="field-label" style="width:100%;margin-bottom:6px">Password</label>
     <div class="pw-wrap">
@@ -214,7 +214,10 @@ body{position:fixed;inset:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe 
         <div class="avatar" id="avatarLetter">N</div>
       </div>
       <div class="month-nav">
-        <h2 id="monthTitle">June 2026</h2>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <button id="todayBtn" onclick="goToToday()" style="display:none;font-size:11px;font-weight:600;color:#F5A623;background:none;border:none;cursor:pointer;text-align:left;padding:0;letter-spacing:0.3px">Today</button>
+          <h2 id="monthTitle">June 2026</h2>
+        </div>
         <div class="nav-arrows">
           <button class="nav-arr" onclick="changeMonth(-1)">‹</button>
           <button class="nav-arr" onclick="changeMonth(1)">›</button>
@@ -525,6 +528,11 @@ async function loadFromDB(){
     }
     state.schedules={nima:{},dorsa:{}};
     if(data)data.forEach(r=>{if(!state.schedules[r.person])state.schedules[r.person]={};state.schedules[r.person][r.date]={start:r.start_time,end:r.end_time,hours:r.hours,isOff:r.is_off,note:r.note,id:r.id};});
+    // Select today on first load
+    if(!state.selectedDate){
+      const t=new Date();
+      state.selectedDate=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');
+    }
     renderCalendar();
   }catch(e){
     console.error('loadFromDB exception:',e);
@@ -692,6 +700,8 @@ function renderCalendar(){
   document.getElementById('dorsaH').textContent=dorsaH?(Math.round(dorsaH*10)/10)+'h':'–';
   renderShiftList(m,y,days);
   setTimeout(positionFab,0);
+  updateTodayBtn();
+  setTimeout(()=>{setupScrollSync();setupCalendarSwipe();},100);
 }
 
 function renderShiftList(m,y,days){
@@ -746,10 +756,15 @@ function renderShiftList(m,y,days){
 
   document.getElementById('editDayBtn').style.display='none';
 
-  // If a day is selected (e.g. clicked from calendar grid), scroll it into view
-  if(state.selectedDate){
+  // Scroll to selectedDate, or to today if this is current month and nothing selected
+  const scrollTarget=state.selectedDate||(
+    today.getFullYear()===y&&today.getMonth()===m
+      ? y+'-'+String(m+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0')
+      : null
+  );
+  if(scrollTarget){
     setTimeout(()=>{
-      const target=document.getElementById('day-'+state.selectedDate);
+      const target=document.getElementById('day-'+scrollTarget);
       if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
     },50);
   }
@@ -759,6 +774,74 @@ function selectDayAndEdit(ds){
   state.selectedDate=ds;
   openEditModal();
 }
+
+// ── TODAY button visibility ──────────────────────────────────────────────────
+function updateTodayBtn(){
+  const today=new Date();
+  const isCurrentMonth=state.month===today.getMonth()&&state.year===today.getFullYear();
+  const btn=document.getElementById('todayBtn');
+  if(btn) btn.style.display=isCurrentMonth?'none':'block';
+}
+
+// ── GO TO TODAY ──────────────────────────────────────────────────────────────
+function goToToday(){
+  const today=new Date();
+  state.month=today.getMonth();
+  state.year=today.getFullYear();
+  const ds=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  state.selectedDate=ds;
+  renderCalendar();
+  setTimeout(()=>{
+    const target=document.getElementById('day-'+ds);
+    if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
+  },80);
+}
+
+// ── SCROLL FEED → HIGHLIGHT CALENDAR DAY ────────────────────────────────────
+function setupScrollSync(){
+  const scroller=document.querySelector('.card-scroll');
+  if(!scroller||scroller._syncBound)return;
+  scroller._syncBound=true;
+  scroller.addEventListener('scroll',()=>{
+    const blocks=[...document.querySelectorAll('.day-block')];
+    const scrollerTop=scroller.getBoundingClientRect().top;
+    let best=null,bestDist=Infinity;
+    for(const b of blocks){
+      const rect=b.getBoundingClientRect();
+      const dist=Math.abs(rect.top-scrollerTop);
+      if(dist<bestDist){bestDist=dist;best=b;}
+    }
+    if(!best)return;
+    const ds=best.id.replace('day-','');
+    if(ds===state._scrollDate)return;
+    state._scrollDate=ds;
+    // highlight calendar cell
+    document.querySelectorAll('#calGrid .dc').forEach(c=>c.classList.remove('selected-day'));
+    const cell=document.querySelector('#calGrid .dc[data-date="'+ds+'"]');
+    if(cell)cell.classList.add('selected-day');
+    // highlight feed block
+    document.querySelectorAll('.day-block').forEach(b=>b.classList.remove('day-block-active'));
+    best.classList.add('day-block-active');
+    state.selectedDate=ds;
+  },{passive:true});
+}
+
+// ── SWIPE ON CALENDAR HEADER → CHANGE MONTH ─────────────────────────────────
+function setupCalendarSwipe(){
+  const header=document.querySelector('.cal-header');
+  if(!header||header._swipeBound)return;
+  header._swipeBound=true;
+  let sx=0,sy=0;
+  header.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+  header.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-sx;
+    const dy=e.changedTouches[0].clientY-sy;
+    if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.5){
+      changeMonth(dx<0?1:-1);
+    }
+  },{passive:true});
+}
+
 </script>
 </body>
 </html>
